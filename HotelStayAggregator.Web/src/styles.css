@@ -1,0 +1,22 @@
+:root {
+  font-family: Inter, system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: #1f2937;
+  background: #f3f4f6;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app-shell { max-width: 960px; margin: 0 auto; padding: 24px; }
+.stepper { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.step { background: #e5e7eb; color: #111827; }
+.step.active { background: #2563eb; color: white; }
+.step:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
+.search-form, .reservation-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+button, input, select { padding: 10px 12px; border-radius: 8px; border: 1px solid #d1d5db; }
+button { background: #2563eb; color: white; cursor: pointer; }
+.hotel-list { padding: 0; list-style: none; display: grid; gap: 12px; }
+.hotel-list li, .reservation-card { background: white; border-radius: 12px; padding: 14px; box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+.error { color: #b91c1c; margin-top: 12px; }
+.field-error { color: #b91c1c; font-size: 0.85rem; margin-top: 4px; }
