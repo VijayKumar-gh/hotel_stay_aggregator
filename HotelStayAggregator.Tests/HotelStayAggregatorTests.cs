@@ -1,3 +1,4 @@
+using HotelStayAggregator.Api.Exceptions;
 using HotelStayAggregator.Api.Models;
 using HotelStayAggregator.Api.Providers;
 using HotelStayAggregator.Api.Repositories;
@@ -20,6 +21,34 @@ public class HotelStayAggregatorTests
         Assert.Equal(4, result.Count);
         Assert.Contains(result, offer => offer.ProviderName == "PremierStays");
         Assert.Contains(result, offer => offer.ProviderName == "BudgetNests");
+    }
+
+    [Fact]
+    public async Task SearchHotelsAsync_NormalizesSnakeCaseRoomTypeAndSupportsPascalCaseInput()
+    {
+        var providers = new IHotelProvider[] { new PremierStaysProvider(), new BudgetNestsProvider() };
+        var service = new HotelSearchService(providers);
+
+        var request = new HotelSearchRequest("Berlin", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 3), "deluxe_room");
+
+        var result = await service.SearchHotelsAsync(request);
+
+        Assert.NotEmpty(result);
+        Assert.All(result, offer => Assert.Equal("Deluxe", offer.RoomType));
+    }
+
+    [Fact]
+    public async Task SearchHotelsAsync_FiltersUnavailableRooms_WhenBudgetNestsHasNoInventory()
+    {
+        var providers = new IHotelProvider[] { new BudgetNestsProvider() };
+        var service = new HotelSearchService(providers);
+
+        var request = new HotelSearchRequest("Berlin", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 3), "deluxe_room");
+
+        var result = await service.SearchHotelsAsync(request);
+
+        Assert.All(result, offer => Assert.True(offer.IsAvailable));
+        Assert.DoesNotContain(result, offer => offer.ProviderName == "BudgetNests" && !offer.IsAvailable);
     }
 
     [Fact]
@@ -51,7 +80,7 @@ public class HotelStayAggregatorTests
     }
 
     [Fact]
-    public async Task ReserveHotelAsync_RejectsInvalidDocumentType()
+    public async Task ReserveHotelAsync_RejectsInvalidDocumentType_WithClearValidationMessage()
     {
         var repository = new InMemoryReservationRepository();
         var providers = new IHotelProvider[] { new PremierStaysProvider(), new BudgetNestsProvider() };
@@ -69,7 +98,9 @@ public class HotelStayAggregatorTests
             "P1234567",
             "PremierStays");
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.ReserveHotelAsync(request));
+        var exception = await Assert.ThrowsAsync<ReservationValidationException>(() => service.ReserveHotelAsync(request));
+
+        Assert.Contains("Passport", exception.Message);
     }
 
     [Fact]
@@ -91,7 +122,9 @@ public class HotelStayAggregatorTests
             "P1234567",
             "PremierStays");
 
-        await Assert.ThrowsAsync<ArgumentException>(() => service.ReserveHotelAsync(request));
+        var exception = await Assert.ThrowsAsync<ReservationValidationException>(() => service.ReserveHotelAsync(request));
+
+        Assert.Contains("National ID", exception.Message);
     }
 
     [Fact]
@@ -103,5 +136,27 @@ public class HotelStayAggregatorTests
         var request = new HotelSearchRequest("Berlin", new DateOnly(2026, 8, 3), new DateOnly(2026, 8, 3), "Deluxe");
 
         await Assert.ThrowsAsync<ArgumentException>(() => service.SearchHotelsAsync(request));
+    }
+
+    [Fact]
+    public async Task ReserveHotelAsync_RejectsMissingGuestName_AsBasicInputValidation()
+    {
+        var repository = new InMemoryReservationRepository();
+        var providers = new IHotelProvider[] { new PremierStaysProvider(), new BudgetNestsProvider() };
+        var service = new ReservationService(repository, providers);
+
+        var request = new ReserveHotelRequest(
+            "PS-101",
+            "Ocean View Suites",
+            "Berlin",
+            new DateOnly(2026, 8, 1),
+            new DateOnly(2026, 8, 3),
+            "Deluxe",
+            string.Empty,
+            "Passport",
+            "P1234567",
+            "PremierStays");
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.ReserveHotelAsync(request));
     }
 }

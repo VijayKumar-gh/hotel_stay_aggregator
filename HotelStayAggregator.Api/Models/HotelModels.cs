@@ -1,5 +1,12 @@
 namespace HotelStayAggregator.Api.Models;
 
+public enum RoomType
+{
+    Standard,
+    Deluxe,
+    Suite
+}
+
 public record HotelSearchRequest(
     string Destination,
     DateOnly CheckInDate,
