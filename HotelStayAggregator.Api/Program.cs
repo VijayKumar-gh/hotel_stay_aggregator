@@ -1,3 +1,4 @@
+using HotelStayAggregator.Api.Exceptions;
 using HotelStayAggregator.Api.Models;
 using HotelStayAggregator.Api.Providers;
 using HotelStayAggregator.Api.Repositories;
@@ -56,13 +57,17 @@ app.MapPost("/api/reservations", async (ReserveHotelRequest request, IReservatio
         var reservation = await reservationService.ReserveHotelAsync(request, cancellationToken);
         return Results.Created($"/api/reservations/{reservation.ReferenceNumber}", reservation);
     }
+    catch (ReservationValidationException ex)
+    {
+        return Results.UnprocessableEntity(new { error = ex.Message });
+    }
     catch (ArgumentException ex)
     {
-        return Results.BadRequest(ex.Message);
+        return Results.BadRequest(new { error = ex.Message });
     }
     catch (InvalidOperationException ex)
     {
-        return Results.Conflict(ex.Message);
+        return Results.Conflict(new { error = ex.Message });
     }
 })
 .WithName("ReserveHotel")

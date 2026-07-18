@@ -1,3 +1,4 @@
+using HotelStayAggregator.Api.Exceptions;
 using HotelStayAggregator.Api.Models;
 using HotelStayAggregator.Api.Providers;
 using HotelStayAggregator.Api.Repositories;
@@ -31,7 +32,7 @@ public sealed class ReservationService : IReservationService
             throw new ArgumentException($"Unsupported provider '{request.ProviderName}'.");
         }
 
-        var nights = (request.CheckOutDate.DayNumber - request.CheckInDate.DayNumber);
+        var nights = request.CheckOutDate.DayNumber - request.CheckInDate.DayNumber;
         if (nights <= 0)
         {
             throw new ArgumentException("Check-out date must be after check-in date.");
@@ -94,12 +95,12 @@ public sealed class ReservationService : IReservationService
 
         if (string.IsNullOrWhiteSpace(request.GuestDocumentType))
         {
-            throw new ArgumentException("Guest document type is required.");
+            throw new ReservationValidationException("Guest document type is required.");
         }
 
         if (string.IsNullOrWhiteSpace(request.GuestDocumentNumber))
         {
-            throw new ArgumentException("Guest document number is required.");
+            throw new ReservationValidationException("Guest document number is required.");
         }
 
         var isDomesticDestination = IsDomesticDestination(request.Destination);
@@ -107,7 +108,7 @@ public sealed class ReservationService : IReservationService
         {
             if (!request.GuestDocumentType.Equals("National ID", StringComparison.OrdinalIgnoreCase))
             {
-                throw new ArgumentException("Domestic destinations require National ID.");
+                throw new ReservationValidationException("Domestic destinations require National ID.");
             }
 
             return;
@@ -115,7 +116,7 @@ public sealed class ReservationService : IReservationService
 
         if (!request.GuestDocumentType.Equals("Passport", StringComparison.OrdinalIgnoreCase))
         {
-            throw new ArgumentException("International destinations require Passport.");
+            throw new ReservationValidationException("International destinations require Passport.");
         }
     }
 

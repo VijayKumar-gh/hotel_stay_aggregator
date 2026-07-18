@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useMemo, useState } from 'react';
 
 type HotelOffer = {
   hotelId: string;
@@ -30,6 +30,7 @@ type ReservationFormState = {
 };
 
 type FlowStep = 'search' | 'reservation' | 'confirmation' | 'lookup';
+type SortDirection = 'asc' | 'desc';
 
 const defaultSearch = {
   destination: 'Berlin',
@@ -44,10 +45,26 @@ const defaultReservationForm = {
   guestDocumentNumber: 'P1234567',
 };
 
+const cancellationPolicy = 'Free cancellation up to 24 hours before check-in.';
+
 const isDomesticDestination = (destination: string) => {
   const normalized = destination.trim().toLowerCase();
   return ['new york', 'seattle', 'boston', 'austin', 'miami'].includes(normalized);
 };
+
+const calculateNights = (checkInDate: string, checkOutDate: string) => {
+  if (!checkInDate || !checkOutDate) {
+    return 0;
+  }
+
+  const inDate = new Date(checkInDate);
+  const outDate = new Date(checkOutDate);
+  const diff = outDate.getTime() - inDate.getTime();
+
+  return Math.max(0, diff / (1000 * 60 * 60 * 24));
+};
+
+const getTotalPrice = (offer: HotelOffer, nights: number) => offer.pricePerNight * Math.max(1, nights);
 
 function App() {
   const [search, setSearch] = useState(defaultSearch);
@@ -61,10 +78,47 @@ function App() {
   const [searchErrors, setSearchErrors] = useState<{ destination?: string; checkInDate?: string; checkOutDate?: string; roomType?: string }>({});
   const [reservationErrors, setReservationErrors] = useState<{ guestName?: string; guestDocumentType?: string; guestDocumentNumber?: string }>({});
   const [activeStep, setActiveStep] = useState<FlowStep>('search');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const nights = calculateNights(search.checkInDate, search.checkOutDate);
 
   const canAccessReservationStep = Boolean(selectedOffer);
   const canAccessConfirmationStep = Boolean(confirmation);
   const canAccessLookupStep = Boolean(referenceNumber.trim());
+  const isReservationComplete = Boolean(confirmation);
+  const isLookupComplete = Boolean(reservationLookup);
+
+  const sortedResults = useMemo(() => {
+    return [...results].sort((a, b) => {
+      const left = getTotalPrice(a, nights);
+      const right = getTotalPrice(b, nights);
+      return sortDirection === 'asc' ? left - right : right - left;
+    });
+  }, [results, nights, sortDirection]);
+
+  const getStepClassName = (step: FlowStep) => {
+    if (activeStep === step) {
+      return 'step active';
+    }
+
+    if (step === 'search' && results.length > 0) {
+      return 'step complete';
+    }
+
+    if (step === 'reservation' && canAccessReservationStep) {
+      return 'step complete';
+    }
+
+    if (step === 'confirmation' && isReservationComplete) {
+      return 'step complete';
+    }
+
+    if (step === 'lookup' && isLookupComplete) {
+      return 'step complete';
+    }
+
+    return 'step';
+  };
 
   const searchHotels = async (event: FormEvent) => {
     event.preventDefault();
@@ -107,12 +161,18 @@ function App() {
     );
 
     if (!response.ok) {
-      setError('Search failed.');
+      const payload = await response.json().catch(() => null);
+      setError(payload?.error ?? 'Search failed.');
+      setResults([]);
       return;
     }
 
     const data = (await response.json()) as HotelOffer[];
     setResults(data);
+
+    if (data.length === 0) {
+      setError('No hotels were returned for the selected criteria.');
+    }
   };
 
   const startReservation = (offer: HotelOffer) => {
@@ -173,8 +233,8 @@ function App() {
     });
 
     if (!response.ok) {
-      const message = await response.text();
-      setError(message || 'Reservation failed.');
+      const payload = await response.json().catch(() => null);
+      setError(payload?.error ?? 'Reservation failed.');
       return;
     }
 
@@ -210,10 +270,10 @@ function App() {
       <p>Compare offers from PremierStays and BudgetNests.</p>
 
       <div className="stepper">
-        <button type="button" className={activeStep === 'search' ? 'step active' : 'step'} onClick={() => setActiveStep('search')}>1. Search</button>
-        <button type="button" className={activeStep === 'reservation' ? 'step active' : 'step'} onClick={() => canAccessReservationStep && setActiveStep('reservation')} disabled={!canAccessReservationStep}>2. Reservation</button>
-        <button type="button" className={activeStep === 'confirmation' ? 'step active' : 'step'} onClick={() => canAccessConfirmationStep && setActiveStep('confirmation')} disabled={!canAccessConfirmationStep}>3. Confirmation</button>
-        <button type="button" className={activeStep === 'lookup' ? 'step active' : 'step'} onClick={() => canAccessLookupStep && setActiveStep('lookup')} disabled={!canAccessLookupStep}>4. Lookup</button>
+        <button type="button" className={getStepClassName('search')} onClick={() => setActiveStep('search')}>1. Search</button>
+        <button type="button" className={getStepClassName('reservation')} onClick={() => canAccessReservationStep && setActiveStep('reservation')} disabled={!canAccessReservationStep}>2. Reservation</button>
+        <button type="button" className={getStepClassName('confirmation')} onClick={() => canAccessConfirmationStep && setActiveStep('confirmation')} disabled={!canAccessConfirmationStep}>3. Confirmation</button>
+        <button type="button" className={getStepClassName('lookup')} onClick={() => canAccessLookupStep && setActiveStep('lookup')} disabled={!canAccessLookupStep}>4. Lookup</button>
       </div>
 
       {activeStep === 'search' ? (
@@ -243,16 +303,27 @@ function App() {
       {activeStep === 'search' ? (
         <section>
           <h2>Search Results</h2>
-          <ul className="hotel-list">
-            {results.map((offer) => (
-              <li key={`${offer.providerName}-${offer.hotelId}`}>
-                <strong>{offer.hotelName}</strong> ({offer.providerName})
-                <div>{offer.destination} • {offer.roomType}</div>
-                <div>{offer.pricePerNight} {offer.currency}/night</div>
-                <button onClick={() => startReservation(offer)}>Select Hotel</button>
-              </li>
-            ))}
-          </ul>
+          <div className="search-toolbar">
+            <button type="button" onClick={() => setSortDirection((current) => current === 'asc' ? 'desc' : 'asc')}>
+              Sort by total price: {sortDirection === 'asc' ? 'Lowest first' : 'Highest first'}
+            </button>
+          </div>
+
+          {sortedResults.length === 0 ? (
+            <div className="empty-state">No hotels available for the selected criteria.</div>
+          ) : (
+            <ul className="hotel-list">
+              {sortedResults.map((offer) => (
+                <li key={`${offer.providerName}-${offer.hotelId}`}>
+                  <strong>{offer.hotelName}</strong> ({offer.providerName})
+                  <div>{offer.destination} • {offer.roomType}</div>
+                  <div>{offer.pricePerNight} {offer.currency}/night</div>
+                  <div><strong>Total:</strong> {getTotalPrice(offer, nights)} {offer.currency}</div>
+                  <button onClick={() => startReservation(offer)}>Select Hotel</button>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       ) : null}
 
@@ -299,10 +370,17 @@ function App() {
           <h2>Confirmation Page</h2>
           <div className="reservation-card">
             <div><strong>Reference Number:</strong> {confirmation.referenceNumber}</div>
+            <div><strong>Provider:</strong> {confirmation.providerName}</div>
             <div><strong>Hotel:</strong> {confirmation.hotelName}</div>
             <div><strong>Destination:</strong> {confirmation.destination}</div>
             <div><strong>Guest:</strong> {confirmation.guestName}</div>
             <div><strong>Total:</strong> {confirmation.totalPrice} {confirmation.currency}</div>
+            <div><strong>Cancellation policy:</strong> {cancellationPolicy}</div>
+          </div>
+
+          <div className="confirmation-actions">
+            <button type="button" onClick={() => setActiveStep('search')}>Back to Search</button>
+            <button type="button" onClick={() => setActiveStep('lookup')}>View Reservation</button>
           </div>
         </section>
       ) : null}
@@ -317,10 +395,12 @@ function App() {
           {reservationLookup ? (
             <div className="reservation-card">
               <div>Reference: {reservationLookup.referenceNumber}</div>
+              <div>Provider: {reservationLookup.providerName}</div>
               <div>Hotel: {reservationLookup.hotelName}</div>
               <div>Destination: {reservationLookup.destination}</div>
               <div>Guest: {reservationLookup.guestName}</div>
               <div>Total: {reservationLookup.totalPrice} {reservationLookup.currency}</div>
+              <div>Cancellation policy: {cancellationPolicy}</div>
             </div>
           ) : null}
         </section>
