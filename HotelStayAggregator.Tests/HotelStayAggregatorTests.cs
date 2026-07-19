@@ -3,6 +3,7 @@ using HotelStayAggregator.Api.Models;
 using HotelStayAggregator.Api.Providers;
 using HotelStayAggregator.Api.Repositories;
 using HotelStayAggregator.Api.Services;
+using HotelStayAggregator.Api.Validation;
 
 namespace HotelStayAggregator.Tests;
 
@@ -56,7 +57,9 @@ public class HotelStayAggregatorTests
     {
         var repository = new InMemoryReservationRepository();
         var providers = new IHotelProvider[] { new PremierStaysProvider(), new BudgetNestsProvider() };
-        var service = new ReservationService(repository, providers);
+        var providerResolver = new HotelProviderResolver(providers);
+        var validator = new ReserveHotelRequestValidator();
+        var service = new ReservationService(repository, providerResolver, validator);
 
         var request = new ReserveHotelRequest(
             "PS-101",
@@ -84,7 +87,9 @@ public class HotelStayAggregatorTests
     {
         var repository = new InMemoryReservationRepository();
         var providers = new IHotelProvider[] { new PremierStaysProvider(), new BudgetNestsProvider() };
-        var service = new ReservationService(repository, providers);
+        var providerResolver = new HotelProviderResolver(providers);
+        var validator = new ReserveHotelRequestValidator();
+        var service = new ReservationService(repository, providerResolver, validator);
 
         var request = new ReserveHotelRequest(
             "PS-101",
@@ -108,7 +113,9 @@ public class HotelStayAggregatorTests
     {
         var repository = new InMemoryReservationRepository();
         var providers = new IHotelProvider[] { new PremierStaysProvider(), new BudgetNestsProvider() };
-        var service = new ReservationService(repository, providers);
+        var providerResolver = new HotelProviderResolver(providers);
+        var validator = new ReserveHotelRequestValidator();
+        var service = new ReservationService(repository, providerResolver, validator);
 
         var request = new ReserveHotelRequest(
             "PS-101",
@@ -143,7 +150,9 @@ public class HotelStayAggregatorTests
     {
         var repository = new InMemoryReservationRepository();
         var providers = new IHotelProvider[] { new PremierStaysProvider(), new BudgetNestsProvider() };
-        var service = new ReservationService(repository, providers);
+        var providerResolver = new HotelProviderResolver(providers);
+        var validator = new ReserveHotelRequestValidator();
+        var service = new ReservationService(repository, providerResolver, validator);
 
         var request = new ReserveHotelRequest(
             "PS-101",

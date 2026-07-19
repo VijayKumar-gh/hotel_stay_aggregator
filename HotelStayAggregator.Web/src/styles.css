@@ -14,7 +14,15 @@ body { margin: 0; }
 .step.active { background: #2563eb; color: white; }
 .step.complete { background: #bbf7d0; color: #166534; }
 .step:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; }
-.search-form, .reservation-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+.search-form, .reservation-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: start; }
+.search-form > div,
+.reservation-form > div,
+.reservation-form > input,
+.reservation-form > select {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .search-toolbar { margin: 12px 0; }
 button, input, select { padding: 10px 12px; border-radius: 8px; border: 1px solid #d1d5db; }
 button { background: #2563eb; color: white; cursor: pointer; }
