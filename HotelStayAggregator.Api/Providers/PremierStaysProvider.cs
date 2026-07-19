@@ -10,8 +10,8 @@ public sealed class PremierStaysProvider : IHotelProvider
     {
         var hotels = new List<HotelOffer>
         {
-            new("PS-101", "Ocean View Suites", request.Destination, request.RoomType, 185m, "USD", ProviderName, true),
-            new("PS-205", "Harbor Luxe", request.Destination, request.RoomType, 220m, "USD", ProviderName, true)
+            new("PS-101", "Ocean View Suites", request.Destination, request.RoomType, 185m, "USD", ProviderName, true, "Free cancellation up to 48 hours before check-in."),
+            new("PS-205", "Harbor Luxe", request.Destination, request.RoomType, 220m, "USD", ProviderName, true, "Free cancellation up to 48 hours before check-in.")
         };
 
         return Task.FromResult<IReadOnlyList<HotelOffer>>(hotels);

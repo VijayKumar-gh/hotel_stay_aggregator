@@ -1,49 +1,10 @@
 # Hotel Stay Aggregator Specification
 
-## Features
-
-### Search Hotels
-
-Users can search hotels using:
-
-- Destination
-- Check-In Date
-- Check-Out Date
-- Room Type
-
-### Reserve Hotel
-
-Users can reserve a room.
-
-## Reservation Process
-the user shall be navigated to a Reservation
-Form.
-from the search results,
-After selecting a hotel
-The Reservation Form shall capture:
-Guest Name Document Type Passport National ID Document Number
-Business Rules:
-International destinations require Passport. Domestic destinations allow National ID. Invalid documents return validation errors.
-Upon successful reservation:
-Generate Reservation Reference Number
-Display Confirmation Page
-
-### View Reservation
-
-Users can retrieve reservation information using a reference number.
-
-## Business Rules
-
-- International destinations require Passport.
-- Domestic destinations allow National ID.
-- Invalid dates return Bad Request.
-
-
 ## Domain overview
 
-This solution aggregates hotel offers from multiple providers and lets a user reserve and retrieve a reservation by reference number.
+The solution aggregates hotel offers from multiple providers, validates reservation input, and returns a reservation reference number for confirmation and lookup.
 
-## Core models
+## Core domain models
 
 ### RoomType enum
 
@@ -56,7 +17,7 @@ public enum RoomType
 }
 ```
 
-### HotelRoom model
+### HotelRoom record
 
 ```csharp
 public record HotelRoom(
@@ -70,7 +31,7 @@ public record HotelRoom(
     bool IsAvailable);
 ```
 
-### Reservation model
+### Reservation record
 
 ```csharp
 public record Reservation(
@@ -103,14 +64,7 @@ public interface IHotelProvider
 }
 ```
 
-### Provider responsibilities
-
-- Return hotel offers for the supplied search request.
-- Return provider-specific `ProviderName` metadata.
-- Mark unavailable inventory with `IsAvailable = false`.
-- Remain easy to add by registering additional providers in dependency injection.
-
-## Search and reservation contracts
+## Search and reservation request contracts
 
 ### HotelSearchRequest
 
@@ -140,19 +94,19 @@ public record ReserveHotelRequest(
 
 ## Validation rules
 
-- Missing destination, room type, check-in, or check-out values should return `400`.
-- Invalid date ranges should return `400`.
+- Missing destination, check-in, check-out, or room type returns `400 Bad Request`.
+- Invalid date ranges return `400 Bad Request`.
 - Domestic destinations require `National ID`.
 - International destinations require `Passport`.
-- Document mismatches should return `422` with a clear error message.
+- Document mismatches return `422 Unprocessable Entity` with a clear message.
 - Successful reservation returns a generated reference number and confirmation payload.
 
-## Provider extensibility
+## Extensibility
 
 The provider abstraction is intentionally small:
 
 - Add a new provider class.
 - Implement `IHotelProvider`.
-- Register it in `Program.cs` with dependency injection.
+- Register it in the DI container in [HotelStayAggregator.Api/Program.cs](HotelStayAggregator.Api/Program.cs).
 
-That supports a clean path to add a third provider without touching the search or reservation business logic.
+This keeps the solution open for a third provider without changing the search or reservation service contracts.

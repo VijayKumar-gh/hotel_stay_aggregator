@@ -63,3 +63,13 @@ dotnet test
 ## Notes
 
 The current implementation uses a provider abstraction that makes it easy to add a third provider by implementing `IHotelProvider` and registering it in the existing dependency injection container.
+
+## Future database swap path
+
+This repo intentionally keeps the data access layer behind `IReservationRepository` so it can stay completely in-memory for the case study. If a database is introduced later, the simplest migration path is:
+
+1. Replace `InMemoryReservationRepository` with an EF Core-backed implementation.
+2. Keep the same repository interface and service contracts.
+3. Update dependency injection registration in [HotelStayAggregator.Api/Program.cs](HotelStayAggregator.Api/Program.cs).
+
+This ensures the business logic does not need to change when the persistence strategy changes.

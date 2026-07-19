@@ -9,6 +9,7 @@ type HotelOffer = {
   currency: string;
   providerName: string;
   isAvailable: boolean;
+  cancellationPolicy: string;
 };
 
 type Reservation = {
@@ -21,6 +22,8 @@ type Reservation = {
   providerName: string;
   totalPrice: number;
   currency: string;
+  status: string;
+  cancellationPolicy: string;
 };
 
 type ReservationFormState = {
@@ -45,7 +48,7 @@ const defaultReservationForm = {
   guestDocumentNumber: 'P1234567',
 };
 
-const cancellationPolicy = 'Free cancellation up to 24 hours before check-in.';
+const defaultCancellationPolicy = 'Free cancellation up to 24 hours before check-in.';
 
 const isDomesticDestination = (destination: string) => {
   const normalized = destination.trim().toLowerCase();
@@ -319,6 +322,7 @@ function App() {
                   <div>{offer.destination} • {offer.roomType}</div>
                   <div>{offer.pricePerNight} {offer.currency}/night</div>
                   <div><strong>Total:</strong> {getTotalPrice(offer, nights)} {offer.currency}</div>
+                  <div><strong>Cancellation:</strong> {offer.cancellationPolicy}</div>
                   <button onClick={() => startReservation(offer)}>Select Hotel</button>
                 </li>
               ))}
@@ -374,8 +378,9 @@ function App() {
             <div><strong>Hotel:</strong> {confirmation.hotelName}</div>
             <div><strong>Destination:</strong> {confirmation.destination}</div>
             <div><strong>Guest:</strong> {confirmation.guestName}</div>
+            <div><strong>Status:</strong> {confirmation.status}</div>
             <div><strong>Total:</strong> {confirmation.totalPrice} {confirmation.currency}</div>
-            <div><strong>Cancellation policy:</strong> {cancellationPolicy}</div>
+            <div><strong>Cancellation policy:</strong> {confirmation.cancellationPolicy ?? defaultCancellationPolicy}</div>
           </div>
 
           <div className="confirmation-actions">
@@ -399,8 +404,9 @@ function App() {
               <div>Hotel: {reservationLookup.hotelName}</div>
               <div>Destination: {reservationLookup.destination}</div>
               <div>Guest: {reservationLookup.guestName}</div>
+              <div>Status: {reservationLookup.status}</div>
               <div>Total: {reservationLookup.totalPrice} {reservationLookup.currency}</div>
-              <div>Cancellation policy: {cancellationPolicy}</div>
+              <div>Cancellation policy: {reservationLookup.cancellationPolicy ?? defaultCancellationPolicy}</div>
             </div>
           ) : null}
         </section>

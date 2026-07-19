@@ -3,11 +3,13 @@ using HotelStayAggregator.Api.Models;
 using HotelStayAggregator.Api.Providers;
 using HotelStayAggregator.Api.Repositories;
 using HotelStayAggregator.Api.Services;
+using HotelStayAggregator.Api.Validation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddHealthChecks();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -20,9 +22,11 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddSingleton<IHotelProvider, PremierStaysProvider>();
 builder.Services.AddSingleton<IHotelProvider, BudgetNestsProvider>();
+builder.Services.AddSingleton<IHotelProviderResolver, HotelProviderResolver>();
 builder.Services.AddSingleton<IReservationRepository, InMemoryReservationRepository>();
 builder.Services.AddScoped<IHotelSearchService, HotelSearchService>();
 builder.Services.AddScoped<IReservationService, ReservationService>();
+builder.Services.AddSingleton<IReserveHotelRequestValidator, ReserveHotelRequestValidator>();
 
 var app = builder.Build();
 
@@ -35,6 +39,8 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 app.UseHttpsRedirection();
 
+app.MapHealthChecks("/health");
+
 app.MapGet("/api/hotels/search", async (string destination, DateOnly checkInDate, DateOnly checkOutDate, string roomType, IHotelSearchService hotelSearchService, CancellationToken cancellationToken) =>
 {
     try
@@ -44,7 +50,7 @@ app.MapGet("/api/hotels/search", async (string destination, DateOnly checkInDate
     }
     catch (ArgumentException ex)
     {
-        return Results.BadRequest(ex.Message);
+        return Results.BadRequest(new ApiErrorResponse("validation_error", ex.Message));
     }
 })
 .WithName("SearchHotels")
@@ -59,15 +65,15 @@ app.MapPost("/api/reservations", async (ReserveHotelRequest request, IReservatio
     }
     catch (ReservationValidationException ex)
     {
-        return Results.UnprocessableEntity(new { error = ex.Message });
+        return Results.UnprocessableEntity(new ApiErrorResponse("validation_error", ex.Message));
     }
     catch (ArgumentException ex)
     {
-        return Results.BadRequest(new { error = ex.Message });
+        return Results.BadRequest(new ApiErrorResponse("validation_error", ex.Message));
     }
     catch (InvalidOperationException ex)
     {
-        return Results.Conflict(new { error = ex.Message });
+        return Results.Conflict(new ApiErrorResponse("conflict", ex.Message));
     }
 })
 .WithName("ReserveHotel")
@@ -77,7 +83,7 @@ app.MapGet("/api/reservations/{referenceNumber}", async (string referenceNumber,
 {
     var reservation = await reservationService.GetReservationAsync(referenceNumber, cancellationToken);
     return reservation is null
-        ? Results.NotFound()
+        ? Results.NotFound(new ApiErrorResponse("not_found", "Reservation was not found."))
         : Results.Ok(reservation);
 })
 .WithName("GetReservation")

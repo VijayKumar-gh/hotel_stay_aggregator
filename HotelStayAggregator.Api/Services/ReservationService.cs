@@ -1,7 +1,7 @@
-using HotelStayAggregator.Api.Exceptions;
 using HotelStayAggregator.Api.Models;
 using HotelStayAggregator.Api.Providers;
 using HotelStayAggregator.Api.Repositories;
+using HotelStayAggregator.Api.Validation;
 
 namespace HotelStayAggregator.Api.Services;
 
@@ -14,19 +14,24 @@ public interface IReservationService
 public sealed class ReservationService : IReservationService
 {
     private readonly IReservationRepository _reservationRepository;
-    private readonly IEnumerable<IHotelProvider> _providers;
+    private readonly IHotelProviderResolver _providerResolver;
+    private readonly IReserveHotelRequestValidator _validator;
 
-    public ReservationService(IReservationRepository reservationRepository, IEnumerable<IHotelProvider> providers)
+    public ReservationService(
+        IReservationRepository reservationRepository,
+        IHotelProviderResolver providerResolver,
+        IReserveHotelRequestValidator validator)
     {
         _reservationRepository = reservationRepository;
-        _providers = providers;
+        _providerResolver = providerResolver;
+        _validator = validator;
     }
 
     public async Task<Reservation> ReserveHotelAsync(ReserveHotelRequest request, CancellationToken cancellationToken = default)
     {
-        ValidateRequest(request);
+        _validator.Validate(request);
 
-        var provider = _providers.FirstOrDefault(p => p.ProviderName.Equals(request.ProviderName, StringComparison.OrdinalIgnoreCase));
+        var provider = _providerResolver.Resolve(request.ProviderName);
         if (provider is null)
         {
             throw new ArgumentException($"Unsupported provider '{request.ProviderName}'.");
@@ -62,6 +67,8 @@ public sealed class ReservationService : IReservationService
             request.ProviderName,
             hotel.PricePerNight * nights,
             hotel.Currency,
+            ReservationStatus.Confirmed,
+            hotel.CancellationPolicy,
             DateTime.UtcNow);
 
         await _reservationRepository.AddAsync(reservation, cancellationToken);
@@ -83,49 +90,9 @@ public sealed class ReservationService : IReservationService
                 reservation.GuestName,
                 reservation.ProviderName,
                 reservation.TotalPrice,
-                reservation.Currency);
+                reservation.Currency,
+                reservation.Status,
+                reservation.CancellationPolicy);
     }
 
-    private static void ValidateRequest(ReserveHotelRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.GuestName))
-        {
-            throw new ArgumentException("Guest name is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.GuestDocumentType))
-        {
-            throw new ReservationValidationException("Guest document type is required.");
-        }
-
-        if (string.IsNullOrWhiteSpace(request.GuestDocumentNumber))
-        {
-            throw new ReservationValidationException("Guest document number is required.");
-        }
-
-        var isDomesticDestination = IsDomesticDestination(request.Destination);
-        if (isDomesticDestination)
-        {
-            if (!request.GuestDocumentType.Equals("National ID", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ReservationValidationException("Domestic destinations require National ID.");
-            }
-
-            return;
-        }
-
-        if (!request.GuestDocumentType.Equals("Passport", StringComparison.OrdinalIgnoreCase))
-        {
-            throw new ReservationValidationException("International destinations require Passport.");
-        }
-    }
-
-    private static bool IsDomesticDestination(string destination)
-    {
-        return destination.Equals("New York", StringComparison.OrdinalIgnoreCase)
-            || destination.Equals("Seattle", StringComparison.OrdinalIgnoreCase)
-            || destination.Equals("Boston", StringComparison.OrdinalIgnoreCase)
-            || destination.Equals("Austin", StringComparison.OrdinalIgnoreCase)
-            || destination.Equals("Miami", StringComparison.OrdinalIgnoreCase);
-    }
 }

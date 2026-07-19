@@ -7,6 +7,13 @@ public enum RoomType
     Suite
 }
 
+public enum ReservationStatus
+{
+    Confirmed,
+    Pending,
+    Cancelled
+}
+
 public record HotelSearchRequest(
     string Destination,
     DateOnly CheckInDate,
@@ -21,7 +28,8 @@ public record HotelOffer(
     decimal PricePerNight,
     string Currency,
     string ProviderName,
-    bool IsAvailable);
+    bool IsAvailable,
+    string CancellationPolicy);
 
 public record ReserveHotelRequest(
     string HotelId,
@@ -49,6 +57,8 @@ public record Reservation(
     string ProviderName,
     decimal TotalPrice,
     string Currency,
+    ReservationStatus Status,
+    string CancellationPolicy,
     DateTime CreatedAtUtc);
 
 public record ReservationLookupResult(
@@ -60,4 +70,8 @@ public record ReservationLookupResult(
     string GuestName,
     string ProviderName,
     decimal TotalPrice,
-    string Currency);
+    string Currency,
+    ReservationStatus Status,
+    string CancellationPolicy);
+
+public record ApiErrorResponse(string Code, string Message);
